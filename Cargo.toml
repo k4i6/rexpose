@@ -1,0 +1,18 @@
+[package]
+name = "rexpose"
+version = "1.0.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.47", features = ["derive"] }
+env_logger = "0.11.8"
+log = "0.4.28"
+tokio = {version = "1.47.1", features = ["full"]}
+tokio-native-tls = "0.3.1"
+openssl = {version = "0.10.73", features = ["vendored"]}
+serde = "1.0.219"
+serde_cbor = "0.11.2"
+
+[dev-dependencies]
+assert_cmd = "2.0.17"
+predicates = "3.1.3"
