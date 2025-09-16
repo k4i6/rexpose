@@ -2,6 +2,12 @@
 name = "rexpose"
 version = "1.0.0"
 edition = "2024"
+description = "A reverse proxy to expose TCP and UDP services behind any NAT via a public server."
+repository = "https://github.com/k4i6/rexpose"
+readme = "README.md"
+keywords = ["proxy", "TCP", "UDP"]
+categories = ["development-tools", "network-programming", "os", "web-programming"]
+license = "MIT"
 
 [dependencies]
 clap = { version = "4.5.47", features = ["derive"] }
