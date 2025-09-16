@@ -4,10 +4,13 @@ A reverse proxy to expose TCP and UDP services behind any NAT via a public serve
 
 ## Install
 
+### Download binary
+
+You can use any precompiled binary from the [release section](https://github.com/k4i6/rexpose/releases).
+
 ### From sources
 
-- clone the git repository
-- run `cargo install` to install the rexpose binary
+- run `cargo install rexpose`
 
 ## Usage
 
