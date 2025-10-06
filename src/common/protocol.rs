@@ -5,10 +5,13 @@ use tokio::io::{AsyncRead, AsyncReadExt};
 pub const MGMT_MESSAGE_SIZE: usize = 3;
 pub const UDP_BUFFER_SIZE: usize = 65_535;
 
+pub const HTTP_METHOD: &str = "POST";
+
 pub enum MgmtMessage {
     NotifyRequest,
     KeepAlive,
     UdpStart,
+    Ack,
 }
 
 impl MgmtMessage {
@@ -17,6 +20,7 @@ impl MgmtMessage {
             MgmtMessage::NotifyRequest => b"REQ",
             MgmtMessage::KeepAlive => b"KAL",
             MgmtMessage::UdpStart => b"UDP",
+            MgmtMessage::Ack => b"ACK",
         }
     }
 }

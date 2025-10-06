@@ -77,7 +77,7 @@ impl AuthorizedConnection for AuthorizedServer {
                     },
                 };
                 client_connection_timeouts = 0;
-                let forward_stream = match forward_connection {
+                let mut forward_stream = match forward_connection {
                     Ok((forward_stream,address)) => {
                         if self.server.connected_address.ip().eq(&address.ip()) {
                             forward_stream
@@ -93,7 +93,7 @@ impl AuthorizedConnection for AuthorizedServer {
                 };
                 log::debug!("forward connection established");
                 let (join_handle_1, join_handle_2) = if encrpyted {
-                    let tls_stream = match timeout(TLS_ACCEPTOR_TIMEOUT, self.server.server.tls_acceptor.accept(forward_stream)).await {
+                    let mut tls_stream = match timeout(TLS_ACCEPTOR_TIMEOUT, self.server.server.tls_acceptor.accept(forward_stream)).await {
                         Ok(Ok(stream)) => stream,
                         Ok(Err(err )) => {
                             log::warn!("error while starting tls: {}", err);
@@ -104,9 +104,11 @@ impl AuthorizedConnection for AuthorizedServer {
                             continue;
                         },
                     };
+                    self.server.server.init_mgmt_stream(&mut tls_stream).await.map_err(|_| "Stream init failed.")?;
                     forward_streams(tls_stream, request_stream)
                 } else {
-                    forward_streams(request_stream, forward_stream)
+                    self.server.server.init_mgmt_stream(&mut forward_stream).await.map_err(|_| "Stream init failed.")?;
+                    forward_streams(forward_stream, request_stream)
                 };
                 self.forward_tasks.push(join_handle_1);
                 self.forward_tasks.push(join_handle_2);

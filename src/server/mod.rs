@@ -3,12 +3,14 @@ pub mod udp;
 
 use std::{error::Error, fmt, net::SocketAddr, time::Duration};
 
-use tokio::{io::{self, AsyncReadExt}, net::{TcpListener, TcpStream}, time::timeout};
+use tokio::{io::{self, AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt}, net::{TcpListener, TcpStream}, time::timeout};
 use tokio_native_tls::{TlsAcceptor, TlsStream};
 
-use crate::common::keystore::import_identity;
+use crate::common::{keystore::import_identity, protocol::{MgmtMessage, HTTP_METHOD}};
 
 const READ_TIMEOUT: Duration = Duration::from_secs(1);
+const HTTP_INIT_BUF_SIZE: usize = 512;
+const WRITE_TIMEOUT: Duration = Duration::from_secs(1);
 
 
 pub struct Server {
@@ -29,9 +31,49 @@ impl Server {
         log::debug!("listening for client to connect");
         let (stream, address) = listener.accept().await?;
         log::debug!("client connected, starting tls connection");
-        let tls_stream = self.tls_acceptor.accept(stream).await?;
+        let mut tls_stream = self.tls_acceptor.accept(stream).await?;
         log::debug!("tls connection established");
+        self.init_mgmt_stream(&mut tls_stream).await.map_err(|_| "Stream init failed.")?;
         return Ok(UnauthorizedServer { mgmt_stream: tls_stream, mgmt_listener: listener, connected_address: address, server: self });
+    }
+
+    pub async fn init_mgmt_stream<T: AsyncRead + AsyncWrite + Unpin>(&self, conn: &mut T) -> Result<(), ()> {
+        let mut init_buf: [u8; HTTP_INIT_BUF_SIZE] = [0; HTTP_INIT_BUF_SIZE];
+        let msg_size = match timeout(READ_TIMEOUT, conn.read(&mut init_buf)).await {
+            Ok(Ok(size)) => size,
+            Ok(Err(err)) => {
+                log::error!("Error while receiving initial HTTP request: {}", err);
+                return Err(());
+            }
+            Err(_) => {
+                log::error!("Timeout while waiting for initial HTTP request.");
+                return Err(());
+            },
+        };
+        let expected_http_method = HTTP_METHOD.as_bytes();
+        if msg_size < expected_http_method.len() {
+            log::error!("Unexpected msg size: {}", msg_size);
+            return Err(());
+        }
+        if !expected_http_method.eq(&init_buf[..expected_http_method.len()]) {
+            log::error!("Unexpected msg content.");
+            return Err(());
+        }
+        log::debug!("HTTP msg received.");
+        match timeout(WRITE_TIMEOUT, conn.write_all(MgmtMessage::Ack.message())).await {
+            Ok(Ok(_)) => {
+                log::debug!("ACK msg sent.");
+                return Ok(());
+            },
+            Ok(Err(err)) => {
+                log::error!("Error while sending ACK msg: {}", err);
+                return Err(());
+            }
+            Err(_) => {
+                log::error!("Timeout while sending ACK msg.");
+                return Err(());
+            },
+        }
     }
 }
 
