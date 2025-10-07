@@ -46,7 +46,7 @@ async fn do_not_trust_unknown_certificate() -> Result<(), Box<dyn std::error::Er
     let server_port = get_unused_port().await?;
 
     let mut server_handle = start_server(server_port, mgmt_port, false)?;
-    sleep(Duration::from_millis(500)).await;
+    sleep(Duration::from_millis(1000)).await;
 
     let mut client_cmd = assert_cmd::Command::cargo_bin("rexpose")?;
     client_cmd.arg("-P")
@@ -71,7 +71,7 @@ async fn wrong_pw_test() -> Result<(), Box<dyn std::error::Error>> {
     let server_port = get_unused_port().await?;
 
     let mut server_handle = start_server(server_port, mgmt_port, false)?;
-    sleep(Duration::from_millis(500)).await;
+    sleep(Duration::from_millis(1000)).await;
 
     let mut client_cmd = assert_cmd::Command::cargo_bin("rexpose")?;
     client_cmd.arg("-P")
@@ -100,7 +100,7 @@ async fn close_client_on_server_kill() -> Result<(), Box<dyn std::error::Error>>
     let server_port = get_unused_port().await?;
 
     let mut server_handle = start_server(server_port, mgmt_port, false)?;
-    sleep(Duration::from_millis(500)).await;
+    sleep(Duration::from_millis(1000)).await;
 
     let mut client_cmd = Command::new(assert_cmd::Command::cargo_bin("rexpose")?.get_program());
     client_cmd.arg("-P")
@@ -117,7 +117,7 @@ async fn close_client_on_server_kill() -> Result<(), Box<dyn std::error::Error>>
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     let client_handle = client_cmd.spawn()?;
-    sleep(Duration::from_millis(500)).await;
+    sleep(Duration::from_millis(1000)).await;
 
     server_handle.kill().await?;
 
@@ -132,7 +132,7 @@ async fn forwarding_tcp(encrypted_server: bool, encrypted_client: bool, send: &s
     let server_port = get_unused_port().await?;
     
     let mut server_handle = start_server(server_port, mgmt_port, encrypted_server)?;
-    sleep(Duration::from_millis(500)).await;
+    sleep(Duration::from_millis(1000)).await;
 
     let mut client_cmd = Command::new(assert_cmd::Command::cargo_bin("rexpose")?.get_program());
     client_cmd.arg("-P")
@@ -151,7 +151,7 @@ async fn forwarding_tcp(encrypted_server: bool, encrypted_client: bool, send: &s
     }
     let mut client_handle = client_cmd.spawn()?;
 
-    sleep(Duration::from_millis(500)).await;
+    sleep(Duration::from_millis(1000)).await;
 
     let (tx, rx) = tokio::sync::mpsc::channel::<String>(1);
     let client_join_handle = accept_and_receive(client_port);

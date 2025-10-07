@@ -46,7 +46,7 @@ async fn forwarding_udp(encrypted_server: bool, encrypted_client: bool, send: &s
     let server_port = get_unused_port().await?;
     
     let mut server_handle = start_server(server_port, mgmt_port, encrypted_server)?;
-    sleep(Duration::from_millis(500)).await;
+    sleep(Duration::from_millis(1000)).await;
 
     let mut client_cmd = Command::new(assert_cmd::Command::cargo_bin("rexpose")?.get_program());
     client_cmd.arg("-P")
@@ -66,7 +66,7 @@ async fn forwarding_udp(encrypted_server: bool, encrypted_client: bool, send: &s
     }
     let mut client_handle = client_cmd.spawn()?;
 
-    sleep(Duration::from_millis(500)).await;
+    sleep(Duration::from_millis(1000)).await;
 
     let (tx, rx) = tokio::sync::mpsc::channel::<String>(1);
     let client_join_handle = receive_and_reflect(client_port);
