@@ -103,18 +103,17 @@ impl AuthorizedUdpServer {
 impl AuthorizedConnection for AuthorizedUdpServer {
     async fn forward_communication(&mut self, forwarded_port: &u16, encrypted: bool) -> Result<(), Box<dyn Error>> {
         let (mut client_stream, _) = self.server.mgmt_listener.accept().await?;
+        self.server.server.init_mgmt_stream(&mut client_stream).await.map_err(|_| "Stream init failed.")?;
         let udp_socket = Arc::new(UdpSocket::bind(format!("0.0.0.0:{}", forwarded_port)).await?);
         let stop = Arc::new(AtomicBool::new(false));
 
         let (read_handle, write_handle) = if encrypted {
-            let mut tls_stream = self.server.server.tls_acceptor.accept(client_stream).await?;
-            self.server.server.init_mgmt_stream(&mut tls_stream).await.map_err(|_| "Stream init failed.")?;
+            let tls_stream = self.server.server.tls_acceptor.accept(client_stream).await?;
             let (client_read, client_write) = io::split(tls_stream);
             let read_handle = tokio::spawn(AuthorizedUdpServer::handle_udp_read(client_write, udp_socket.clone(), stop.clone()));
             let write_handle = tokio::spawn(AuthorizedUdpServer::handle_udp_write(client_read, udp_socket.clone(), stop.clone()));
             (read_handle, write_handle)
         } else {
-            self.server.server.init_mgmt_stream(&mut client_stream).await.map_err(|_| "Stream init failed.")?;
             let (client_read, client_write) = client_stream.into_split();
             let read_handle = tokio::spawn(AuthorizedUdpServer::handle_udp_read(client_write, udp_socket.clone(), stop.clone()));
             let write_handle = tokio::spawn(AuthorizedUdpServer::handle_udp_write(client_read, udp_socket.clone(), stop.clone()));

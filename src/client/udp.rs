@@ -159,17 +159,16 @@ impl UnauthorizedConnection<AuthorizedUdpClient> for ConnectedClient {
 impl AuthorizedConnection for AuthorizedUdpClient {
     async fn forward_communication(&mut self, forwarded_port: &u16, encrypted: bool) -> Result<(), Box<dyn Error>> {
         let mut server_stream = TcpStream::connect(self.client.client.tcp_address()).await?;
+        self.client.client.init_mgmt_stream(&mut server_stream).await.map_err(|_| "Stream init failed.")?;
 
         let (write_handle, keep_alive_handle) = if encrypted {
-            let mut tls_stream = self.client.client.tls_connector.connect(&self.client.client.server_address, server_stream).await?;
-            self.client.client.init_mgmt_stream(&mut tls_stream).await.map_err(|_| "Stream init failed.")?;
+            let tls_stream = self.client.client.tls_connector.connect(&self.client.client.server_address, server_stream).await?;
             let (server_read, server_write) = io::split(tls_stream);
             let server_write = Arc::new(Mutex::new(server_write));
             let write_handle = tokio::spawn(AuthorizedUdpClient::handle_udp_write(server_read, server_write.clone(), *forwarded_port));
             let keep_alive_handle = tokio::spawn(AuthorizedUdpClient::send_periodic_keep_alive(server_write.clone()));
             (write_handle, keep_alive_handle)
         } else {
-            self.client.client.init_mgmt_stream(&mut server_stream).await.map_err(|_| "Stream init failed.")?;
             let (server_read, server_write) = server_stream.into_split();
             let server_write = Arc::new(Mutex::new(server_write));
             let write_handle = tokio::spawn(AuthorizedUdpClient::handle_udp_write(server_read, server_write.clone(), *forwarded_port));

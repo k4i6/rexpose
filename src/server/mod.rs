@@ -29,11 +29,11 @@ impl Server {
     async fn connect_internal(self) -> Result<UnauthorizedServer, Box<dyn Error>> {
         let listener = TcpListener::bind(format!("0.0.0.0:{}", self.mgmt_port)).await?;
         log::debug!("listening for client to connect");
-        let (stream, address) = listener.accept().await?;
+        let (mut stream, address) = listener.accept().await?;
+        self.init_mgmt_stream(&mut stream).await.map_err(|_| "Stream init failed.")?;
         log::debug!("client connected, starting tls connection");
-        let mut tls_stream = self.tls_acceptor.accept(stream).await?;
+        let tls_stream = self.tls_acceptor.accept(stream).await?;
         log::debug!("tls connection established");
-        self.init_mgmt_stream(&mut tls_stream).await.map_err(|_| "Stream init failed.")?;
         return Ok(UnauthorizedServer { mgmt_stream: tls_stream, mgmt_listener: listener, connected_address: address, server: self });
     }
 

@@ -49,11 +49,11 @@ impl Client {
     }
 
     async fn connect_internal(self) -> Result<ConnectedClient, Box<dyn Error>> {
-        let mgmt_stream = timeout(MGMT_STREAM_TCP_CONNECTION_TIMEOUT, TcpStream::connect(self.tcp_address())).await??;
+        let mut mgmt_stream = timeout(MGMT_STREAM_TCP_CONNECTION_TIMEOUT, TcpStream::connect(self.tcp_address())).await??;
+        self.init_mgmt_stream(&mut mgmt_stream).await.map_err(|_| "Mgmt connection initialisation failed.")?;
         log::debug!("start TLS connection");
-        let mut tls_stream = timeout(TLS_CONNECTION_TIMEOUT, self.tls_connector.connect(&self.server_address, mgmt_stream)).await??;
+        let tls_stream = timeout(TLS_CONNECTION_TIMEOUT, self.tls_connector.connect(&self.server_address, mgmt_stream)).await??;
         log::debug!("TLS connection established");
-        self.init_mgmt_stream(&mut tls_stream).await.map_err(|_| "Mgmt connection initialisation failed.")?;
         return Ok(ConnectedClient { client: self, mgmt_stream: tls_stream })
     }
 

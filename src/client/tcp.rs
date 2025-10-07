@@ -85,6 +85,9 @@ impl AuthorizedConnection for AuthorizedClient {
                 },
             };
             log::debug!("request stream opened");
+            if let Err(_) = self.client.client.init_mgmt_stream(&mut request_stream).await {
+                continue;
+            }
             let forward_stream = match self.open_local_forwarding_stream(forwarded_port).await {
                 Ok(stream) => stream,
                 Err(err) => {
@@ -94,17 +97,15 @@ impl AuthorizedConnection for AuthorizedClient {
             };
             log::debug!("local forwarding stream opened");
             let (join_handle_1, join_handle_2) = if encrypted {
-                let mut tls_stream = match self.start_tls(request_stream).await {
+                let tls_stream = match self.start_tls(request_stream).await {
                     Ok(stream) => stream,
                     Err(err) => {
                         log::warn!("failed to start tls: {}", err);
                         continue;
                     },
                 };
-                self.client.client.init_mgmt_stream(&mut tls_stream).await.map_err(|_| "Stream init failed.")?;
                 forward_streams(tls_stream, forward_stream)
             } else {
-                self.client.client.init_mgmt_stream(&mut request_stream).await.map_err(|_| "Stream init failed.")?;
                 forward_streams(request_stream, forward_stream)
             };
             self.forward_tasks.push(join_handle_1);
