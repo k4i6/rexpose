@@ -79,7 +79,7 @@ impl AuthorizedConnection for AuthorizedServer {
                 client_connection_timeouts = 0;
                 let forward_stream = match forward_connection {
                     Ok((forward_stream,address)) => {
-                        if self.server.connected_address.ip().eq(&address.ip()) {
+                        if is_ip_private(self.server.connected_address.ip()) || self.server.connected_address.ip().eq(&address.ip()) {
                             forward_stream
                         } else {
                             log::debug!("unknown forwarding address tried to connect: {}", address);
