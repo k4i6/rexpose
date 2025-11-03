@@ -10,6 +10,7 @@ You can use any precompiled binary from the [release section](https://github.com
 
 ### From sources
 
+- install [rust and cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html)
 - run `cargo install rexpose`
 
 ## Usage
@@ -41,7 +42,9 @@ An example for the generation of a self signed certificate for the hostname 'loc
 | `-e`          | Encrypt all traffic between client and server                     |
 | `-v`          | Enable verbose logging                                            |
 
+### rexpose.app
 
+If you don't want to host a rexpose server by yourself, you can use the SaaS solution [rexpose.app](https://rexpose.app).
 
 ## Architecture
 
