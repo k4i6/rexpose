@@ -10,6 +10,7 @@ use tokio_native_tls::{native_tls::Certificate, TlsConnector, TlsStream};
 const WRITE_TIMEOUT: Duration = Duration::from_secs(1);
 const MGMT_STREAM_TCP_CONNECTION_TIMEOUT: Duration = Duration::from_secs(10);
 const TLS_CONNECTION_TIMEOUT: Duration = Duration::from_secs(10);
+pub const CONNECTION_RETRY_COUNT: u8 = 2;
 
 
 pub struct Client {

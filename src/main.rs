@@ -3,10 +3,12 @@ mod server;
 mod common;
 
 
-use clap::{ArgAction, Parser};
-use tokio::io::{self};
+use std::time::Duration;
 
-use crate::{client::{tcp::AuthorizedClient, udp::AuthorizedUdpClient, Client, ConnectedClient}, common::protocol::{AuthorizedConnection, Connectable, UnauthorizedConnection}, server::{tcp::AuthorizedServer, udp::AuthorizedUdpServer, Server, UnauthorizedServer}};
+use clap::{ArgAction, Parser};
+use tokio::{io::{self}, time::sleep};
+
+use crate::{client::{CONNECTION_RETRY_COUNT, Client, ConnectedClient, tcp::AuthorizedClient, udp::AuthorizedUdpClient}, common::protocol::{AuthorizedConnection, Connectable, UnauthorizedConnection}, server::{Server, UnauthorizedServer, tcp::AuthorizedServer, udp::AuthorizedUdpServer}};
 
 /// A reverse proxy to expose TCP and UDP services behind any NAT via a public server.
 #[derive(Parser, Debug)]
@@ -86,13 +88,23 @@ async fn start_client(args: &Args, password: &str) -> Result<(), ()> {
             return Err(());
         },
     };
-    let client = Client::new(&server_address, &args.server_port, &args.certificate_path);
-    if args.udp {
-        handle_connection::<AuthorizedUdpClient, ConnectedClient, Client>(client, &password, &args.port, args.encrypted).await?;
-    } else {
-        handle_connection::<AuthorizedClient, ConnectedClient, Client>(client, &password, &args.port, args.encrypted).await?;
+    let mut retry = CONNECTION_RETRY_COUNT;
+    while retry > 0 {
+        let client = Client::new(&server_address, &args.server_port, &args.certificate_path);
+        let result = if args.udp {
+            handle_connection::<AuthorizedUdpClient, ConnectedClient, Client>(client, &password, &args.port, args.encrypted).await
+        } else {
+            handle_connection::<AuthorizedClient, ConnectedClient, Client>(client, &password, &args.port, args.encrypted).await
+        };
+        if let Ok(_) = result {
+            retry = CONNECTION_RETRY_COUNT
+        } else {
+            sleep(Duration::from_secs(1)).await;
+            log::info!("reopen connection");
+            retry -= 1;
+        }
     }
-    return Ok(());
+    return Err(());
 }
 
 async fn start_server(args: &Args, password: &str) -> Result<(), ()> {

@@ -85,7 +85,7 @@ async fn wrong_pw_test() -> Result<(), Box<dyn std::error::Error>> {
         .arg("-a")
         .arg("localhost");
     client_cmd.assert()
-        .success();
+        .failure();
     server_handle.kill().await?;
     let server_output = server_handle.wait_with_output().await?;
     let error_output = String::from_utf8(server_output.stderr)?;
@@ -121,8 +121,8 @@ async fn close_client_on_server_kill() -> Result<(), Box<dyn std::error::Error>>
 
     server_handle.kill().await?;
 
-    let output = timeout(Duration::from_secs(1), client_handle.wait_with_output()).await??;
-    assert_eq!(output.status.success(), true);
+    let output = timeout(Duration::from_secs(3), client_handle.wait_with_output()).await??;
+    assert_eq!(output.status.success(), false);
     Ok(())
 }
 
