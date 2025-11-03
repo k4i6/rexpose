@@ -73,7 +73,10 @@ impl AuthorizedConnection for AuthorizedClient {
                 log::info!("zero read, closing connection");
                 return Ok(());
             }
-            if !buf.eq(MgmtMessage::NotifyRequest.message()) {
+            if buf.eq(MgmtMessage::KeepAlive.message()) {
+                self.send_keep_alive().await?;
+                continue;
+            } else if !buf.eq(MgmtMessage::NotifyRequest.message()) {
                 log::info!("received unknown message: {}", std::str::from_utf8(&buf).unwrap_or_default());
                 continue;
             }

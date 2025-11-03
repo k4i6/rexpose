@@ -1,17 +1,18 @@
-use std::{error::Error, fmt, time::Duration};
+use std::{error::Error, time::Duration};
 
 use tokio::{io::{self, AsyncWriteExt}, net::TcpListener, task::JoinHandle, time::timeout};
 
-use crate::{common::{protocol::{AuthorizedConnection, Connectable, MgmtMessage, UnauthorizedConnection}, tcp_utils::forward_streams}, server::{Server, UnauthorizedServer}};
+use crate::{common::{ip_extension::is_ip_private, protocol::{AuthorizedConnection, Connectable, MgmtMessage, UnauthorizedConnection}, tcp_utils::forward_streams}, server::{Server, UnauthorizedServer, WRITE_TIMEOUT, receive_and_test_pw}};
 
-const WRITE_TIMEOUT: Duration = Duration::from_secs(1);
+const IDLE_MGMT_STREAM_TIMEOUT: Duration = Duration::from_secs(20);
 const WAIT_FOR_CONNECTIN_TIMEOUT: Duration = Duration::from_secs(2);
 const TLS_ACCEPTOR_TIMEOUT: Duration = Duration::from_secs(2);
 const MAX_CLIENT_CONNECTION_TIMEOUTS: u32 = 10;
 
 pub struct AuthorizedServer {
     server: UnauthorizedServer,
-    forward_tasks: Vec<JoinHandle<()>>
+    forward_tasks: Vec<JoinHandle<()>>,
+    password: String,
 }
 
 impl AuthorizedServer {
@@ -21,17 +22,6 @@ impl AuthorizedServer {
         return Ok(());
     }
 }
-
-#[derive(Debug, Clone)]
-struct TooManyClientConnectionTimeouts;
-
-impl fmt::Display for TooManyClientConnectionTimeouts {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Too many client connection timeouts")
-    }
-}
-
-impl Error for TooManyClientConnectionTimeouts {}
 
 impl Connectable<AuthorizedServer, UnauthorizedServer> for Server {
     async fn connect(self) -> Result<UnauthorizedServer, Box<dyn Error>> {
@@ -55,18 +45,29 @@ impl AuthorizedConnection for AuthorizedServer {
         let mut client_connection_timeouts: u32 = 0;
         loop {
             if client_connection_timeouts >= MAX_CLIENT_CONNECTION_TIMEOUTS {
-                return Err(Box::new(TooManyClientConnectionTimeouts { }))
+                log::warn!("Too many client connection timeouts");
+                return Ok(())
             }
             self.forward_tasks.retain(|tasks| !tasks.is_finished());
-            let (request_stream, _) = match listener.accept().await {
-                Ok(stream) => stream,
-                Err(err) => {
+            let (request_stream, _) = match timeout(IDLE_MGMT_STREAM_TIMEOUT, listener.accept()).await {
+                Ok(Ok(stream)) => stream,
+                Ok(Err(err)) => {
                     log::info!("error while opening connection: {}", err);
                     continue;
                 },
+                Err(_) => {
+                    if let Err(err) = self.server.test_mgmt_stream_connection().await {
+                        log::warn!("mgmt stream broken: {}", err);
+                        return Ok(())
+                    }
+                    continue;
+                }
             };
             log::debug!("new connection on local forwarding port");
-            self.notify_new_request().await?;
+            if let Err(err) = self.notify_new_request().await {
+                log::warn!("mgmt stream broken: {}", err);
+                return Ok(())
+            }
             loop {
                 let forward_connection = match timeout(WAIT_FOR_CONNECTIN_TIMEOUT, self.server.mgmt_listener.accept()).await {
                     Ok(connection) => connection,

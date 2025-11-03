@@ -3,11 +3,12 @@ pub mod udp;
 
 use std::{error::Error, fmt, net::SocketAddr, time::Duration};
 
-use tokio::{io::{self, AsyncReadExt}, net::{TcpListener, TcpStream}, time::timeout};
+use tokio::{io::{self, AsyncReadExt, AsyncWriteExt}, net::{TcpListener, TcpStream}, time::timeout};
 use tokio_native_tls::{TlsAcceptor, TlsStream};
 
-use crate::common::keystore::import_identity;
+use crate::common::{keystore::import_identity, protocol::{MgmtMessage, MGMT_MESSAGE_SIZE}};
 
+pub const WRITE_TIMEOUT: Duration = Duration::from_secs(1);
 const READ_TIMEOUT: Duration = Duration::from_secs(1);
 
 
@@ -46,6 +47,21 @@ impl UnauthorizedServer {
     async fn authorize_internal(&mut self, password: &str) -> Result<(), Box<dyn Error>> {
         return receive_and_test_pw(&mut self.mgmt_stream, password).await;
     }
+
+    async fn send_keep_alive(&mut self) -> io::Result<()> {
+        log::debug!("sending keep alive message");
+        timeout(WRITE_TIMEOUT, self.mgmt_stream.write_all(MgmtMessage::KeepAlive.message())).await??;
+        return Ok(());
+    }
+
+    pub async fn test_mgmt_stream_connection(&mut self) -> Result<(), Box<dyn Error>> {
+        self.send_keep_alive().await?;
+        let mut buf: [u8; MGMT_MESSAGE_SIZE] = [0;MGMT_MESSAGE_SIZE];
+        timeout(READ_TIMEOUT, self.mgmt_stream.read_exact(&mut buf)).await??;
+        return Ok(());
+    }
+}
+
 pub async fn receive_and_test_pw(tls_stream: &mut TlsStream<TcpStream>, password: &str) -> Result<(), Box<dyn Error>> {
     let mut pw_buf: [u8; 256] = [0; 256];
     let pw_read_size = timeout(READ_TIMEOUT, tls_stream.read(&mut pw_buf)).await??;
