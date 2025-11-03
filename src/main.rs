@@ -4,7 +4,7 @@ mod common;
 
 
 use clap::{ArgAction, Parser};
-use tokio::io::{self, AsyncBufReadExt, BufReader};
+use tokio::io::{self};
 
 use crate::{client::{tcp::AuthorizedClient, udp::AuthorizedUdpClient, Client, ConnectedClient}, common::protocol::{AuthorizedConnection, Connectable, UnauthorizedConnection}, server::{tcp::AuthorizedServer, udp::AuthorizedUdpServer, Server, UnauthorizedServer}};
 
@@ -125,12 +125,8 @@ async fn read_password(args: &Args) -> io::Result<String> {
     if let Some(password) = &args.password {
         return Ok(password.to_string());
     }
-    println!("Enter password:");
-    let stdin = io::stdin();
-    let mut reader = BufReader::new(stdin);
-    let mut password = String::new();
-    reader.read_line(&mut password).await?;
-    return Ok(password);
+    let password = rpassword::prompt_password("Enter password: ").unwrap();
+    return Ok(password.trim_end().to_string());
 }
 
 async fn handle_connection<A: AuthorizedConnection, U: UnauthorizedConnection<A>, C: Connectable<A,U>>(connectable: C, password: &str, port: &u16, encrypted: bool) -> Result<(), ()> {

@@ -18,6 +18,7 @@ tokio-native-tls = "0.3.1"
 openssl = {version = "0.10.73", features = ["vendored"]}
 serde = "1.0.219"
 serde_cbor = "0.11.2"
+rpassword = "7.4.0"
 
 [dev-dependencies]
 assert_cmd = "2.0.17"
