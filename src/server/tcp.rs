@@ -43,7 +43,7 @@ impl Connectable<AuthorizedServer, UnauthorizedServer> for Server {
 impl UnauthorizedConnection<AuthorizedServer> for UnauthorizedServer {
     async fn authorize(mut self, password: &str) -> Result<AuthorizedServer, Box<dyn Error>> {
         self.authorize_internal(password).await?;
-        return Ok(AuthorizedServer { server: self, forward_tasks: Vec::new() });
+        return Ok(AuthorizedServer { server: self, forward_tasks: Vec::new(), password: password.to_string() });
     }
 }
 
@@ -93,7 +93,7 @@ impl AuthorizedConnection for AuthorizedServer {
                 };
                 log::debug!("forward connection established");
                 let (join_handle_1, join_handle_2) = if encrpyted {
-                    let tls_stream = match timeout(TLS_ACCEPTOR_TIMEOUT, self.server.server.tls_acceptor.accept(forward_stream)).await {
+                    let mut tls_stream = match timeout(TLS_ACCEPTOR_TIMEOUT, self.server.server.tls_acceptor.accept(forward_stream)).await {
                         Ok(Ok(stream)) => stream,
                         Ok(Err(err )) => {
                             log::warn!("error while starting tls: {}", err);
@@ -104,6 +104,15 @@ impl AuthorizedConnection for AuthorizedServer {
                             continue;
                         },
                     };
+                    match receive_and_test_pw(&mut tls_stream, &self.password).await {
+                        Ok(_) => {
+                            log::debug!("password validated");
+                        },
+                        Err(err) => {
+                            log::warn!("error while receiving password: {}", err);
+                            continue;
+                        },
+                    }
                     forward_streams(tls_stream, request_stream)
                 } else {
                     forward_streams(request_stream, forward_stream)

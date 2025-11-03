@@ -25,9 +25,13 @@ pub struct ConnectedClient {
 
 impl ConnectedClient {
     async fn authorize_internal(&mut self, password: &str) -> Result<(), Box<dyn Error>> {
-        timeout(WRITE_TIMEOUT, self.mgmt_stream.write_all(password.as_bytes())).await??;
-        return Ok(())
+        return send_password(&mut self.mgmt_stream, &password).await
     }
+}
+
+pub async fn send_password(tls_stream: &mut TlsStream<TcpStream>, password: &str) -> Result<(), Box<dyn Error>> {
+    timeout(WRITE_TIMEOUT, tls_stream.write_all(password.as_bytes())).await??;
+    return Ok(())
 }
 
 impl Client {

@@ -44,16 +44,18 @@ pub struct UnauthorizedServer {
 
 impl UnauthorizedServer {
     async fn authorize_internal(&mut self, password: &str) -> Result<(), Box<dyn Error>> {
-        let mut pw_buf: [u8; 256] = [0; 256];
-        let pw_read_size = timeout(READ_TIMEOUT, self.mgmt_stream.read(&mut pw_buf)).await??;
-        if pw_read_size == 0 {
-            return Err(Box::new(io::Error::new(std::io::ErrorKind::InvalidData, "Zero read, connection closing")));
-        }
-        if password.eq(std::str::from_utf8(&pw_buf.split(|byte| *byte == 0).next().unwrap_or_default()).unwrap_or_default()) {
-            return Ok(());
-        }
-        return Err(Box::new(InvalidPassword {}));
+        return receive_and_test_pw(&mut self.mgmt_stream, password).await;
     }
+pub async fn receive_and_test_pw(tls_stream: &mut TlsStream<TcpStream>, password: &str) -> Result<(), Box<dyn Error>> {
+    let mut pw_buf: [u8; 256] = [0; 256];
+    let pw_read_size = timeout(READ_TIMEOUT, tls_stream.read(&mut pw_buf)).await??;
+    if pw_read_size == 0 {
+        return Err(Box::new(io::Error::new(std::io::ErrorKind::InvalidData, "Zero read, connection closing")));
+    }
+    if password.eq(std::str::from_utf8(&pw_buf.split(|byte| *byte == 0).next().unwrap_or_default()).unwrap_or_default()) {
+        return Ok(());
+    }
+    return Err(Box::new(InvalidPassword {}));
 }
 
 #[derive(Debug, Clone)]

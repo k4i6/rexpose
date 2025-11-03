@@ -3,7 +3,7 @@ use std::{error::Error, time::Duration};
 use tokio::{io::{self, AsyncReadExt, AsyncWriteExt}, net::TcpStream, task::JoinHandle, time::timeout};
 use tokio_native_tls::TlsStream;
 
-use crate::{client::{Client, ConnectedClient}, common::{protocol::{AuthorizedConnection, Connectable, MgmtMessage, UnauthorizedConnection}, tcp_utils::forward_streams}};
+use crate::{client::{Client, ConnectedClient, send_password}, common::{protocol::{AuthorizedConnection, Connectable, MgmtMessage, UnauthorizedConnection}, tcp_utils::forward_streams}};
 
 const READ_TIMEOUT: Duration = Duration::from_secs(10);
 const WRITE_TIMEOUT: Duration = Duration::from_secs(1);
@@ -12,7 +12,8 @@ const TCP_CONNECTION_TIMEOUT: Duration = Duration::from_secs(2);
 
 pub struct AuthorizedClient {
     client: ConnectedClient,
-    forward_tasks: Vec<JoinHandle<()>>
+    forward_tasks: Vec<JoinHandle<()>>,
+    password: String,
 }
 
 impl AuthorizedClient {
@@ -48,7 +49,7 @@ impl Connectable<AuthorizedClient, ConnectedClient> for Client {
 impl UnauthorizedConnection<AuthorizedClient> for ConnectedClient {
     async fn authorize(mut self, password: &str) -> Result<AuthorizedClient, Box<dyn Error>> {
         self.authorize_internal(password).await?;
-        return Ok(AuthorizedClient { client: self, forward_tasks: Vec::new() })
+        return Ok(AuthorizedClient { client: self, forward_tasks: Vec::new(), password: password.to_string() })
     }
 }
 
@@ -94,13 +95,22 @@ impl AuthorizedConnection for AuthorizedClient {
             };
             log::debug!("local forwarding stream opened");
             let (join_handle_1, join_handle_2) = if encrypted {
-                let tls_stream = match self.start_tls(request_stream).await {
+                let mut tls_stream = match self.start_tls(request_stream).await {
                     Ok(stream) => stream,
                     Err(err) => {
                         log::warn!("failed to start tls: {}", err);
                         continue;
                     },
                 };
+                match send_password(&mut tls_stream, &self.password).await {
+                    Ok(_) => {
+                        log::debug!("password sent")
+                    },
+                    Err(err) => {
+                        log::warn!("failed to send password: {}", err);
+                        continue;
+                    },
+                }
                 forward_streams(tls_stream, forward_stream)
             } else {
                 forward_streams(request_stream, forward_stream)
