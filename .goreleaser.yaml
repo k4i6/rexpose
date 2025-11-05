@@ -85,4 +85,4 @@ winget:
         base:
             owner: microsoft
             name: winget-pkgs
-            branch: main
+            branch: master
