@@ -30,6 +30,17 @@ archives:
       - goos: windows
         formats: [zip]
 
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+    output: true
+    artifacts: checksum
+
 nfpms:
   - file_name_template: "{{ .ConventionalFileName }}"
     maintainer: k4i6 <info@k4i.ch>
@@ -54,3 +65,9 @@ homebrew_casks:
       owner: rexpose
       name: homebrew-tap
     directory: Casks
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/rexpose"]
+          end
