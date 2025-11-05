@@ -71,3 +71,18 @@ homebrew_casks:
           if OS.mac?
             system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/rexpose"]
           end
+
+winget:
+  - publisher: k4i6 <info@k4i.ch>
+    package_identifier: rexpose.rexpose
+    short_description: A reverse proxy to expose TCP and UDP services behind any NAT via a public server.
+    license: "mit"
+    repository:
+      owner: rexpose
+      name: winget-pkgs
+      pull_request:
+        enabled: true
+        base:
+            owner: microsoft
+            name: winget-pkgs
+            branch: main
