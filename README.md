@@ -4,6 +4,20 @@ A reverse proxy to expose TCP and UDP services behind any NAT via a public serve
 
 ## Install
 
+### Mac & Linux
+
+You can use [Homebrew](https://brew.sh) to install rexpose:
+```bash
+brew install rexpose/tap/rexpose
+```
+
+### Windows
+
+You can use [WinGet](https://learn.microsoft.com/en-us/windows/package-manager/winget/):
+```shell
+winget install rexpose.rexpose
+```
+
 ### Download binary
 
 You can use any precompiled binary from the [release section](https://github.com/k4i6/rexpose/releases).
