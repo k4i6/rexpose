@@ -1,5 +1,9 @@
 version: 2
 
+before:
+  hooks:
+  - grep -q "version = \"{{ .Version }}\"" Cargo.toml
+
 universal_binaries:
   - replace: true
 
