@@ -41,6 +41,10 @@ The server needs access to a valid certificate and the associated private key to
 An example for the generation of a self signed certificate for the hostname 'localhost' is provided as following:
 `openssl req  -nodes -new -x509 -days 7 -keyout /etc/ssl/private/key.key -out /etc/ssl/certs/cert.cert -addext "subjectAltName = DNS:localhost" -subj "/CN=localhost" -addext "extendedKeyUsage = serverAuth, clientAuth" -addext "keyUsage = digitalSignature,keyAgreement"`
 
+### rexpose.app
+
+If you don't want to host a rexpose server by yourself, you can use the SaaS solution [rexpose.app](https://rexpose.app).
+
 ### Argument list
 
 | Argument      | Description                                                       |
@@ -55,10 +59,6 @@ An example for the generation of a self signed certificate for the hostname 'loc
 | `-u`          | Indicate that the forwarded service is a UDP service              |
 | `-e`          | Encrypt all traffic between client and server                     |
 | `-v`          | Enable verbose logging                                            |
-
-### rexpose.app
-
-If you don't want to host a rexpose server by yourself, you can use the SaaS solution [rexpose.app](https://rexpose.app).
 
 ## Architecture
 
