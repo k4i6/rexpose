@@ -10,7 +10,7 @@ use tokio::{io::{self}, time::sleep};
 
 use crate::{client::{CONNECTION_RETRY_COUNT, Client, ConnectedClient, tcp::AuthorizedClient, udp::AuthorizedUdpClient}, common::protocol::{AuthorizedConnection, Connectable, UnauthorizedConnection}, server::{Server, UnauthorizedServer, tcp::AuthorizedServer, udp::AuthorizedUdpServer}};
 
-/// A reverse proxy to expose TCP and UDP services behind any NAT via a public server.
+/// A tunneling proxy to expose TCP and UDP services behind any NAT via a public server.
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {

@@ -79,7 +79,7 @@ homebrew_casks:
 winget:
   - publisher: k4i6 <info@k4i.ch>
     package_identifier: rexpose.rexpose
-    short_description: A reverse proxy to expose TCP and UDP services behind any NAT via a public server.
+    short_description: A tunneling proxy to expose TCP and UDP services behind any NAT via a public server.
     license: "mit"
     repository:
       owner: rexpose
