@@ -22,7 +22,8 @@ impl MgmtMessage {
 }
 
 pub fn addressed_udp_message(addr: SocketAddr, message: &[u8]) -> Result<Vec<u8>, Box<dyn Error>> {
-    let mut serialized_addr = serde_cbor::to_vec(&addr)?;
+    let mut serialized_addr = Vec::new();
+    ciborium::into_writer(&addr, &mut serialized_addr)?;
     let addr_size: u32 = serialized_addr.len().try_into()?;
     let message_size: u32 = message.len().try_into()?;
     let mut result: Vec<u8> = Vec::new();
@@ -37,7 +38,7 @@ pub async fn read_addressed_udp_message<T: AsyncRead + Unpin>(stream: &mut T) ->
     let addr_size = stream.read_u32().await?;
     let mut addr_buf = vec![0u8; addr_size.try_into()?];
     stream.read_exact(&mut addr_buf).await?;
-    let addr: SocketAddr = serde_cbor::from_slice(&addr_buf)?;
+    let addr: SocketAddr = ciborium::from_reader(addr_buf.as_slice())?;
     let message_size = stream.read_u32().await?;
     let mut message_buf = vec![0u8; message_size.try_into()?];
     stream.read_exact(&mut message_buf).await?;
